@@ -192,7 +192,7 @@ function cleanSong(t) {
 }
 
 async function getAlbumArt(song) {
-  const defaultImg = "https://radiobamaromania.is-best.net/assets/img/girl-listen-music-bama-vdark.png";
+  const defaultImg = "https://radiobamaromania.site.je/assets/img/girl-listen-music-bama-vdark.png";
   const s = song.toUpperCase();
   if (!song || s.includes("RADIO BAMA") || s.includes("BAMA") || song.length < 5) return defaultImg;
   try {
