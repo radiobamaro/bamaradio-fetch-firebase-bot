@@ -2,7 +2,7 @@ const http = require('http');
 const PORT = process.env.PORT || 3000;
 
 // Server HTTP nativ pentru ca Render să detecteze portul deschis și să mențină botul activ 24/7
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Botul Radio BAMA rulează 24/7 și sincronizează Firebase!');
 }).listen(PORT, '0.0.0.0', () => {
@@ -205,7 +205,18 @@ async function getAlbumArt(song) {
   return defaultImg;
 }
 
-// Verificare din 5 în 5 secunde
+// Verificare din 40 în 40 secunde
 const INTERVAL_SECUNDE = 40;
-setInterval(mainRobot, INTERVAL_SECUNDE * 1000);
+const intervalId = setInterval(mainRobot, INTERVAL_SECUNDE * 1000);
 mainRobot();
+
+// Gestionare oprire curată pentru re-deploy-uri fluide pe Render (previne blocajele)
+const handleShutdown = (signal) => {
+  clearInterval(intervalId);
+  server.close(() => {
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
