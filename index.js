@@ -20,16 +20,26 @@ const CHANNELS = [
   { id: "party", url: "http://212.84.160.1:5549/status-json.xsl" }
 ];
 
+// Helper generic pentru fetch protejat cu timeout de 5 secunde (previne blocajele în rețea)
+async function safeFetch(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeout);
+    return res;
+  } catch (e) {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
 async function mainRobot() {
   console.log("--- START CICLU VERIFICARE CANALE ---");
 
   for (const channel of CHANNELS) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6000);
-
-      const response = await fetch(channel.url, { signal: controller.signal }).catch(() => null);
-      clearTimeout(timeout);
+      const response = await safeFetch(channel.url);
 
       if (!response || !response.ok) {
         console.warn(`[${channel.id.toUpperCase()}] SERVER DOWN! Cod răspuns: ${response ? response.status : 'No Response'}`);
@@ -115,7 +125,7 @@ async function saveConfigToFirebase(id, stats) {
     }
   };
   try {
-    await fetch(url, {
+    await safeFetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -127,8 +137,8 @@ async function saveConfigToFirebase(id, stats) {
 
 async function getHistory(id) {
   try {
-    const res = await fetch(`${BASE_DATA_PATH}/song_history/${id}`);
-    if (!res.ok) return [];
+    const res = await safeFetch(`${BASE_DATA_PATH}/song_history/${id}`);
+    if (!res || !res.ok) return [];
     const data = await res.json();
     if (!data.fields || !data.fields.list) return [];
     return data.fields.list.arrayValue.values.map(item => ({
@@ -161,7 +171,7 @@ async function saveHistoryToFirebase(id, list) {
     }
   };
   try {
-    await fetch(url, {
+    await safeFetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -196,7 +206,8 @@ async function getAlbumArt(song) {
   const s = song.toUpperCase();
   if (!song || s.includes("RADIO BAMA") || s.includes("BAMA") || song.length < 5) return defaultImg;
   try {
-    const res = await fetch("https://itunes.apple.com/search?term=" + encodeURIComponent(song) + "&limit=1&entity=song");
+    const res = await safeFetch("https://itunes.apple.com/search?term=" + encodeURIComponent(song) + "&limit=1&entity=song");
+    if (!res || !res.ok) return defaultImg;
     const data = await res.json();
     if (data.results && data.results.length > 0) {
       return data.results[0].artworkUrl100.replace('100x100bb', '600x600bb');
@@ -210,7 +221,7 @@ const INTERVAL_SECUNDE = 40;
 const intervalId = setInterval(mainRobot, INTERVAL_SECUNDE * 1000);
 mainRobot();
 
-// Gestionare oprire curată pentru re-deploy-uri fluide pe Render (previne blocajele)
+// Gestionare oprire curată pentru re-deploy-uri fluide pe Render
 const handleShutdown = (signal) => {
   clearInterval(intervalId);
   server.close(() => {
