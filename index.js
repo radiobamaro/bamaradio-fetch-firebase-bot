@@ -206,6 +206,6 @@ async function getAlbumArt(song) {
 }
 
 // Verificare din 5 în 5 secunde
-const INTERVAL_SECUNDE = 5;
+const INTERVAL_SECUNDE = 20;
 setInterval(mainRobot, INTERVAL_SECUNDE * 1000);
 mainRobot();
